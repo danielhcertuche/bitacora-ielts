@@ -219,13 +219,48 @@ async function abrirPrivado(id){
     $("#visorTit").textContent = h.t;
     $("#visorFrame").srcdoc = html;
     $("#visor").hidden = false;
+    VISOR = {id:id, t0:Date.now()};
   } catch(e){ toast("No se pudo abrir " + h.t + ". ¿Hay conexión la primera vez?"); }
 }
+/* Al cerrar una herramienta se registra sola: minutos de uso y, si la herramienta lo muestra,
+   la puntuación. Se puede deshacer desde el aviso. */
+var VISOR = null;
+function totalesTarjetas(){
+  var e = lsGet("tarjetas_v1", null), n = 0, ok = 0;
+  if (e && e.c) Object.keys(e.c).forEach(function(k){ n += e.c[k].n || 0; ok += e.c[k].ok || 0; });
+  return {n:n, ok:ok};
+}
+/* Compara con lo último visto: así también entran las sesiones hechas antes de esta función. */
+function revisarTarjetas(min){
+  var t = totalesTarjetas(), base = lsGet("ui_tarj_base", {n:0, ok:0});
+  if (t.n <= base.n) { lsSet("ui_tarj_base", t); return null; }
+  var e = registrar({act:"tarjetas", min:min || ACT.tarjetas.min, score:t.ok - base.ok, total:t.n - base.n, origen:"auto",
+    nota:(t.n - base.n) + " tarjetas vistas"});
+  lsSet("ui_tarj_base", t);
+  return e;
+}
+function resultadoEn(doc, sel){
+  var el = doc && doc.querySelector(sel), m = el && el.textContent.match(/(\d+)\s*\/\s*(\d+)/);
+  return m ? [+m[1], +m[2]] : null;
+}
+function avisoDeshacer(e){
+  if (!e) return;
+  var t = $("#toast"), a = ACT[e.act];
+  t.innerHTML = "Registrado: " + esc(a.t) + " · " + e.min + "′" + (e.total ? " · " + e.score + "/" + e.total : "") + ' <button type="button" id="deshacer">Deshacer</button>';
+  t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function(){ t.hidden = true; }, 7000);
+  $("#deshacer").onclick = function(){ borrar("s", e.id); t.hidden = true; if (e.act === "tarjetas") lsSet("ui_tarj_base", totalesTarjetas()); };
+}
 $("#visorCerrar").addEventListener("click", function(){
-  $("#visor").hidden = true; $("#visorFrame").srcdoc = "";
-  var id = $("#visorTit").textContent;
-  var a = ACTS.filter(function(x){ return x.t.indexOf(id.split(" · ")[0]) === 0; })[0];
-  if (a && !hechoHoy(a.id)) toast("¿Terminaste? Márcalo en Hoy o díctalo.");
+  var v = VISOR, doc = null;
+  try { doc = $("#visorFrame").contentDocument; } catch(err){}
+  var min = v ? Math.round((Date.now() - v.t0) / 60000) : 0, e = null;
+  if (v && v.id === "tarjetas") e = revisarTarjetas(Math.max(1, min));
+  else if (v){
+    var sc = v.id === "build" ? resultadoEn(doc, "#res .big") : v.id === "r_test2" ? resultadoEn(doc, "#result") : null;
+    if (sc || min >= 2) e = registrar({act:v.id, min:Math.max(1, min), score:sc ? sc[0] : "", total:sc ? sc[1] : "", origen:"auto"});
+  }
+  $("#visor").hidden = true; $("#visorFrame").srcdoc = ""; VISOR = null;
+  avisoDeshacer(e);
 });
 
 /* ════════════════════════════════════════════════════════════════════
@@ -779,6 +814,8 @@ function pintarTodo(){
 
 if (!SR) $("#micAyuda").textContent = "Este navegador no transcribe voz: el botón graba una nota, o escribe abajo. En Chrome de Android sí transcribe.";
 reconstruir(); pintarTodo(); vista(); pintarCola(); iniciarPrivado();
+/* sesión de tarjetas hecha sin pasar por el visor (o antes de que existiera este registro) */
+setTimeout(function(){ avisoDeshacer(revisarTarjetas()); }, 400);
 if (DRIVE.configurado() && DRIVE.consentidoAntes()) sincronizar(false);
 else { pintarDrive(); if (DRIVE.configurado()) estadoSync("off", "toca para conectar Drive"); }
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
