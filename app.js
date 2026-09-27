@@ -45,7 +45,7 @@ var MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","
 var DIAS = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 function fCorta(f){ var p = f.split("-"); return +p[2] + " " + MESES[+p[1]-1]; }
 function lsGet(k, def){ try { var v = localStorage.getItem(k); return v == null ? def : JSON.parse(v); } catch(e){ return def; } }
-function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+function lsSet(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch(e){ return false; } }
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 function toast(msg){ var t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(function(){ t.hidden = true; }, 2800); }
 function bandaDe(score, total, skill){
@@ -71,7 +71,10 @@ function reconstruir(){
   T = Object.keys(ST.t).map(function(k){ return ST.t[k]; }).sort(function(a,b){ return b.ts - a.ts; });
   CFG = Object.assign({}, CFG0, ST.cfg);
 }
-function commit(){ lsSet(KEY, ST); reconstruir(); pintarTodo(); programarSync(); }
+function commit(){
+  if (!lsSet(KEY, ST)) toast("El navegador no dejó guardar en el dispositivo (sin espacio o modo privado). Sincroniza con Drive para no perder esto.");
+  reconstruir(); pintarTodo(); programarSync();
+}
 function agregar(col, obj){ obj.id = obj.id || uid(); obj.ts = obj.ts || Date.now(); ST[col][obj.id] = obj; commit(); return obj; }
 function borrar(col, id){ delete ST[col][id]; ST.del[id] = Date.now(); commit(); }
 
@@ -164,7 +167,10 @@ async function subirCola(){
 
 var syncT = null, sincronizando = false, ultimaSync = lsGet("ui_ultima_sync", 0);
 function estadoSync(clase, txt){ $("#sync").innerHTML = '<span class="dot ' + clase + '"></span><span>' + esc(txt) + '</span>'; }
-function programarSync(){ clearTimeout(syncT); syncT = setTimeout(function(){ sincronizar(false); }, 2500); }
+/* Cada subida crea una revisión en Drive: se agrupan los cambios (20 s sin tocar nada, o al salir). */
+var pendiente = false;
+function programarSync(){ pendiente = true; clearTimeout(syncT); syncT = setTimeout(function(){ sincronizar(false); }, 20000); }
+document.addEventListener("visibilitychange", function(){ if (document.visibilityState === "hidden" && pendiente && DRIVE.conectado()){ clearTimeout(syncT); sincronizar(false); } });
 async function sincronizar(interactivo){
   if (!DRIVE.configurado()){ estadoSync("off", "solo en este dispositivo"); return; }
   if (!navigator.onLine){ estadoSync("off", "sin conexión · se sube después"); return; }
@@ -179,7 +185,7 @@ async function sincronizar(interactivo){
     aplicarHerr(); lsSet(KEY, ST); reconstruir(); pintarTodo();
     await DRIVE.escribirEstado(ST);
     var n = await subirCola();
-    ultimaSync = Date.now(); lsSet("ui_ultima_sync", ultimaSync);
+    ultimaSync = Date.now(); lsSet("ui_ultima_sync", ultimaSync); pendiente = false; pintarUso();
     var h = new Date(); estadoSync("on", "Drive · " + ("0"+h.getHours()).slice(-2) + ":" + ("0"+h.getMinutes()).slice(-2) + (n ? " · " + n + " audio" + (n > 1 ? "s" : "") + " subido" + (n > 1 ? "s" : "") : ""));
     $("#driveMsg").textContent = "Última sincronización: " + h.toLocaleString();
   } catch(e){
@@ -193,6 +199,19 @@ $("#driveBtn").addEventListener("click", function(){ sincronizar(true); });
 $("#syncBtn").addEventListener("click", function(){ sincronizar(true); });
 window.addEventListener("online", function(){ programarSync(); });
 
+async function pintarUso(){
+  var el = $("#usoTxt"); if (!el) return;
+  var loc = 0; try { loc = (localStorage.getItem(KEY) || "").length; } catch(e){}
+  var cola = []; try { cola = await IDB.todos(); } catch(e){}
+  var colaB = cola.reduce(function(a, x){ return a + (x.blob ? x.blob.size : 0); }, 0);
+  var txt = "Bitácora en el dispositivo: " + (loc / 1024).toFixed(1) + " kB de ~5 000 kB disponibles" +
+    " · audios esperando subida: " + cola.length + (cola.length ? " (" + (colaB / 1048576).toFixed(1) + " MB)" : "");
+  if (DRIVE.conectado()){
+    try { var u = await DRIVE.uso(); txt += " · en Drive: " + u.archivos + " archivos, " + (u.bytes / 1048576).toFixed(1) + " MB"; } catch(e){}
+  }
+  el.textContent = txt;
+  if (loc > 3500000) el.textContent += ". La bitácora local se acerca al límite del navegador: descarga una copia.";
+}
 function pintarDrive(){
   $("#driveTxt").innerHTML = DRIVE.configurado()
     ? "La bitácora y tus audios se guardan en tu Drive, en la carpeta <b>Bitácora IELTS</b>. La app sólo puede ver lo que ella misma creó."
@@ -263,7 +282,12 @@ function totalesTarjetas(){
 function revisarTarjetas(min){
   var t = totalesTarjetas(), base = lsGet("ui_tarj_base", {n:0, ok:0});
   if (t.n <= base.n) { lsSet("ui_tarj_base", t); return null; }
-  var e = registrar({act:"tarjetas", min:min || ACT.tarjetas.min, score:t.ok - base.ok, total:t.n - base.n, origen:"auto",
+  var manual = S.filter(function(x){ return x.act === "tarjetas" && x.fecha === hoy() && !x.total; })[0], e;
+  if (manual){
+    e = Object.assign({}, manual, {score:t.ok - base.ok, total:t.n - base.n, ts:Date.now(), nota:(t.n - base.n) + " tarjetas vistas"});
+    if (min && min > manual.min) e.min = min;
+    ST.s[e.id] = e; commit();
+  } else e = registrar({act:"tarjetas", min:min || ACT.tarjetas.min, score:t.ok - base.ok, total:t.n - base.n, origen:"auto",
     nota:(t.n - base.n) + " tarjetas vistas"});
   lsSet("ui_tarj_base", t);
   return e;
@@ -367,9 +391,11 @@ $("#micAyuda").addEventListener("click", function(){
 /* Grabación genérica con MediaRecorder: cb(blob, ext) al parar; estado(r|null) para la UI. */
 function grabar(cb, estado){
   if (!navigator.mediaDevices || !window.MediaRecorder){ toast("Este navegador no permite grabar audio."); return; }
-  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+  navigator.mediaDevices.getUserMedia({audio:{channelCount:1, echoCancellation:true, noiseSuppression:true}}).then(function(stream){
     var tipo = ["audio/webm;codecs=opus","audio/mp4","audio/webm"].filter(function(t){ return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t); })[0] || "";
-    var r = new MediaRecorder(stream, tipo ? {mimeType:tipo} : undefined), trozos = [];
+    /* 24 kbps mono basta para voz y deja 2 minutos en ~360 kB */
+    var opt = {audioBitsPerSecond:24000}; if (tipo) opt.mimeType = tipo;
+    var r = new MediaRecorder(stream, opt), trozos = [];
     r.ondataavailable = function(e){ if (e.data.size) trozos.push(e.data); };
     r.onstop = function(){ stream.getTracks().forEach(function(t){ t.stop(); }); estado(null);
       var b = new Blob(trozos, {type: r.mimeType || "audio/webm"}); cb(b, /mp4/.test(b.type) ? "m4a" : "webm"); };
@@ -842,7 +868,7 @@ function pintarTodo(){
 }
 
 if (!SR) $("#micAyuda").textContent = "Este navegador no transcribe voz: el botón graba una nota, o escribe abajo. En Chrome de Android sí transcribe.";
-reconstruir(); pintarTodo(); vista(); pintarCola(); iniciarPrivado();
+reconstruir(); pintarTodo(); vista(); pintarCola(); iniciarPrivado(); pintarUso();
 /* sesión de tarjetas hecha sin pasar por el visor (o antes de que existiera este registro) */
 setTimeout(function(){ avisoDeshacer(revisarTarjetas()); }, 400);
 if (DRIVE.configurado() && DRIVE.consentidoAntes()) sincronizar(false);

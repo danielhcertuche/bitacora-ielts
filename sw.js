@@ -2,7 +2,7 @@
  * en segundo plano (stale-while-revalidate). Las llamadas a Google nunca se cachean.
  * Subir VERSION cuando cambie la lista de archivos.
  */
-var VERSION = "bitacora-v5";
+var VERSION = "bitacora-v6";
 var ARCHIVOS = ["./", "index.html", "estilos.css", "config.js", "cripto.js", "metricas.js", "voz.js", "drive.js",
   "contenido.js", "app.js", "manifest.webmanifest", "icono.svg", "icono-192.png", "icono-512.png",
   "privado/sal.json", "privado/perfil.json.enc", "privado/tarjetas.html.enc", "privado/discurso.html.enc",
