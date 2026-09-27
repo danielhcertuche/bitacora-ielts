@@ -416,6 +416,11 @@ function hechoHoy(id){ var h = hoy(); return S.some(function(x){ return x.fecha 
 function ultimaVez(id){ for (var i = 0; i < S.length; i++) if (S[i].act === id) return S[i].fecha; return null; }
 function cierre(){ return CFG.cierre || (PERFIL && PERFIL.cierre_solicitud) || ""; }
 
+function minutosPorRama(dias){
+  var desde = isoDe(new Date(Date.now() - (dias - 1) * 86400000)), m = {entrada:0, produccion:0, forma:0, fluidez:0};
+  S.forEach(function(x){ if (x.fecha >= desde && RAMA_DE[x.act]) m[RAMA_DE[x.act]] += +x.min || 0; });
+  return m;
+}
 function focoDelDia(){
   var cand = null;
   GAPS.filter(function(g){ return g.prio === 1; }).forEach(function(g){
@@ -423,26 +428,38 @@ function focoDelDia(){
     var id = GAP_ACT[g.id], u = ultimaVez(id), d = u ? diasDesde(u) : 99;
     if (d >= 4 && (!cand || d > cand.d)) cand = {id:id, d:d, g:g};
   });
-  if (cand) return {id:cand.id, why:(cand.d >= 99 ? "Nunca registrado" : "Hace " + cand.d + " días") + " · " + cand.g.t.toLowerCase()};
+  if (cand) return {id:cand.id, why:(cand.d >= 99 ? "Aún sin practicar" : "Hace " + cand.d + " días") + " · " + cand.g.t.toLowerCase()};
+  /* con al menos una hora registrada en la semana, se equilibra hacia la rama más baja */
+  var m = minutosPorRama(7), tot = m.entrada + m.produccion + m.forma + m.fluidez;
+  if (tot >= 60){
+    var baja = Object.keys(m).sort(function(a, b){ return m[a] - m[b]; })[0];
+    if (m[baja] / tot < 0.15) return {id:RAMAS[baja].sugerir, why:RAMAS[baja].t + " va baja esta semana (" + Math.round(m[baja] / tot * 100) + " %)"};
+  }
   return {id:FOCO[new Date().getDay()], why:"Rotación del " + DIAS[new Date().getDay()]};
 }
 
 function pintarCuenta(){
-  var h = hoy(), out = [], c = cierre();
+  var h = hoy(), c = cierre(), html = "";
+  var dow = (new Date().getDay() + 6) % 7, lunes = isoDe(new Date(Date.now() - dow * 86400000));
+  var minSem = S.filter(function(x){ return x.fecha >= lunes; }).reduce(function(a, x){ return a + (+x.min || 0); }, 0);
   if (CFG.fecha){
     var dEx = diasEntre(h, CFG.fecha), fase;
-    if (dEx < 0) fase = "El examen ya pasó. Registra la banda y fija la siguiente fecha si hace falta.";
-    else if (dEx > 42) fase = "Fase 1 · construir: Writing y Speaking todos los días hábiles, un simulacro al mes.";
-    else if (dEx > 14) fase = "Fase 2 · simulacros: uno completo cada sábado, el resto del tiempo a los fallos que salgan.";
-    else if (dEx > 0) fase = "Fase 3 · afinar: nada nuevo; repetir formato y dormir bien la semana del examen.";
+    if (dEx < 0) fase = "El examen ya pasó. Registra tu banda y fija la siguiente fecha si hace falta.";
+    else if (dEx > 42) fase = "Fase 1 · construir: Writing y Speaking cada día hábil, un simulacro al mes.";
+    else if (dEx > 14) fase = "Fase 2 · simulacros: uno completo cada sábado; el resto, a los fallos que salgan.";
+    else if (dEx > 0) fase = "Fase 3 · afinar: nada nuevo, repetir formato y dormir bien.";
     else fase = "Hoy es el examen.";
-    out.push('<div class="aviso info"><div class="row" style="justify-content:space-between"><b>Examen: ' + fCorta(CFG.fecha) +
-      '</b><span class="mono">' + (dEx >= 0 ? dEx + " días" : "") + '</span></div><p class="small" style="margin-top:4px">' + esc(fase) + '</p></div>');
+    html += '<div class="obj-top"><div><div class="eyebrow">Examen · ' + fCorta(CFG.fecha) + '</div><div class="obj-num">' +
+      Math.max(dEx, 0) + '<small>días</small></div></div></div><p class="obj-txt">' + esc(fase) + '</p>';
   } else {
-    out.push('<div class="aviso"><b>Sin fecha de examen.</b> <span class="small">' + (c ? "La solicitud cierra el " + fCorta(c) + " (" + diasEntre(h, c) + " días). " : "") +
-      'Resérvalo y apunta la fecha en <a href="#progreso">Progreso → Ajustes</a> para que el plan cambie de fase solo.</span></div>');
+    html += '<div class="obj-top"><div><div class="eyebrow">' + (c ? "Cierre de la solicitud · " + fCorta(c) : "Sin fecha de examen") + '</div>' +
+      (c ? '<div class="obj-num">' + diasEntre(h, c) + '<small>días</small></div>' : "") + '</div></div>' +
+      '<p class="obj-txt">Aún no tienes fecha de examen. Resérvala y anótala en <a href="#progreso">Progreso → Ajustes</a>: el plan cambia de fase solo.</p>';
   }
-  $("#cuenta").innerHTML = out.join("");
+  var pct = Math.min(100, minSem / (CFG.meta || 420) * 100);
+  html += '<div class="obj-semana"><div class="fila"><span>Esta semana</span><span class="mono">' + minSem + ' / ' + CFG.meta + ' min</span></div>' +
+    '<div class="linea"><i style="width:' + pct.toFixed(0) + '%"></i></div></div>';
+  $("#cuenta").innerHTML = html;
 
   var est = null;
   for (var i = 0; i < S.length; i++){ var x = S[i]; if ((x.act === "r_full" || x.act === "l_full") && x.total){ est = {b:bandaDe(x.score, x.total, x.skill), s:x.skill, f:x.fecha}; break; } }
@@ -450,33 +467,53 @@ function pintarCuenta(){
   var ticks = ""; for (var b = 3; b <= 9; b++) ticks += '<div class="tick" style="left:' + pos(b) + '"><span>' + b + '</span></div>';
   var marks = '<div class="mark meta" style="left:' + pos(CFG.banda) + '">meta ' + CFG.banda + '</div>';
   if (est && Math.abs(est.b - CFG.banda) >= 0.5) marks += '<div class="mark est" style="left:' + pos(Math.max(3, est.b)) + '">' + est.b + '</div>';
-  $("#banda").innerHTML = '<div class="scale">' + ticks + marks + '</div><p class="legend small muted">' +
-    (est ? "Última estimación: " + SKILLS[est.s] + " " + est.b + " (" + fCorta(est.f) + ", tabla orientativa)." :
-      "Aún no hay simulacro puntuado. El primero de Reading o Listening aparece aquí.") + '</p>';
+  $("#banda").innerHTML = '<div class="scale">' + ticks + marks + '</div><p class="legend">' +
+    (est ? "Última estimación: " + SKILLS[est.s] + " " + est.b + " (" + fCorta(est.f) + ")." :
+      "Tu primer simulacro de Reading o Listening marcará aquí dónde estás.") + '</p>';
 }
 
-function enlace(a){
+function enlace(a, etiqueta){
+  etiqueta = etiqueta || "Abrir";
+  var cls = etiqueta === "Empezar" ? "btn-pri" : "btn-sec";
   if (!a.url) return "";
-  if (a.url.indexOf("priv:") === 0) return '<button type="button" data-priv="' + a.url.slice(5) + '">Abrir</button>';
-  return '<a class="btn" href="' + esc(a.url) + '"' + (/^https?:/.test(a.url) ? ' target="_blank" rel="noopener"' : "") + '>Abrir</a>';
+  if (a.url.indexOf("priv:") === 0) return '<button type="button" class="' + cls + '" data-priv="' + a.url.slice(5) + '">' + etiqueta + '</button>';
+  return '<a class="' + cls + '" href="' + esc(a.url) + '"' + (/^https?:/.test(a.url) ? ' target="_blank" rel="noopener"' : "") + '>' + etiqueta + '</a>';
 }
 function pintarPlan(){
   $("#budgets").innerHTML = PRESUPUESTOS.map(function(p){
-    return '<button type="button" class="chip" data-min="' + p.min + '" aria-pressed="' + (p.min === budget) + '">' + p.t + '</button>';
+    var par = p.t.split(" · ");
+    return '<button type="button" data-min="' + p.min + '" aria-pressed="' + (p.min === budget) + '">' + esc(par[0]) + (par[1] ? '<small>' + esc(par[1]) + '</small>' : "") + '</button>';
   }).join("");
   var P = PRESUPUESTOS.filter(function(p){ return p.min === budget; })[0] || PRESUPUESTOS[3];
   $("#budgetNota").textContent = P.nota;
-  var foco = focoDelDia();
-  var items = P.items.map(function(id){ return id === "FOCO" ? {id:foco.id, why:foco.why} : {id:id}; });
-  $("#plan").innerHTML = items.map(function(it){
-    var a = ACT[it.id], hecho = hechoHoy(a.id), u = ultimaVez(a.id);
-    var sub = [it.why, a.d, u ? "última vez: " + fCorta(u) : "sin registros"].filter(Boolean).join(" · ");
-    return '<div class="it' + (hecho ? " hecho" : "") + '"><div class="min">' + a.min + '′</div><div>' +
-      '<div class="row" style="gap:8px"><h3 class="grow">' + esc(a.t) + '</h3><span class="pill ' + a.donde + '">' + a.donde + '</span></div>' +
-      '<p class="why">' + esc(sub) + '</p><div class="acts">' + enlace(a) +
-      (hecho ? '<span class="small" style="color:var(--ok);align-self:center">Hecho hoy</span>' :
-        '<button type="button" data-hecho="' + a.id + '">Marcar hecho</button>') + '</div></div></div>';
+  var foco = focoDelDia(), visto = {};
+  var items = P.items.map(function(id){ return id === "FOCO" ? {id:foco.id, why:foco.why} : {id:id}; })
+    .filter(function(it){ if (visto[it.id]) return false; visto[it.id] = 1; return true; });
+  var hechos = items.filter(function(it){ return hechoHoy(it.id); }).length, actualPuesto = false;
+  $("#planAvance").textContent = hechos + " de " + items.length;
+  $("#plan").innerHTML = items.map(function(it, k){
+    var a = ACT[it.id], hecho = hechoHoy(a.id), actual = !hecho && !actualPuesto, rama = RAMAS[RAMA_DE[a.id]];
+    if (actual) actualPuesto = true;
+    var u = ultimaVez(a.id), sub = [it.why, a.d, !hecho && u ? "última vez: " + fCorta(u) : ""].filter(Boolean).join(" · ");
+    var abrir = enlace(a, actual ? "Empezar" : "Abrir");
+    return '<li class="paso' + (hecho ? " hecho" : actual ? " actual" : "") + '"><span class="n">' + (hecho ? "✓" : k + 1) + '</span><div>' +
+      '<div class="cab">' + (rama ? '<span class="rama" style="color:' + rama.color + '">' + rama.t + '</span>' : "") +
+      '<span class="pill ' + a.donde + '">' + a.donde + '</span><span class="dur">' + a.min + '′</span></div>' +
+      '<h3>' + esc(a.t) + '</h3>' + (sub ? '<p class="why">' + esc(sub) + '</p>' : "") +
+      (hecho ? "" : '<div class="acts">' + abrir + '<button type="button" class="btn-sec" data-hecho="' + a.id + '">Ya lo hice</button></div>') +
+      '</div></li>';
+  }).join("") + (hechos === items.length ? '<li class="plan-fin">Sesión completa. Si te queda energía, elige más tiempo arriba.</li>' : "");
+}
+function pintarRamas(){
+  var m = minutosPorRama(7), tot = m.entrada + m.produccion + m.forma + m.fluidez;
+  var filas = Object.keys(RAMAS).map(function(k){
+    var r = RAMAS[k], pc = tot ? m[k] / tot * 100 : 0;
+    return '<div class="rama-f"><b>' + r.t + '<span class="d">' + esc(r.d) + '</span></b><div class="track"><i style="width:' + pc.toFixed(0) + '%;background:' + r.color + '"></i></div><span class="pc">' + m[k] + '′</span></div>';
   }).join("");
+  var baja = Object.keys(m).sort(function(a, b){ return m[a] - m[b]; })[0];
+  var nota = tot ? "Un curso equilibrado reparte el tiempo en partes parecidas entre las cuatro ramas (la raya marca el 25 %). La que va más baja es <b>" + RAMAS[baja].t.toLowerCase() + "</b>." :
+    "Cuando registres actividades verás aquí si repartes el tiempo entre entrada, producción, forma y fluidez.";
+  $("#ramas").innerHTML = '<div class="ramas">' + filas + '<p class="rama-nota">' + nota + '</p></div>';
 }
 function filaHist(x){
   var a = ACT[x.act] || ACT.otro;
@@ -490,7 +527,7 @@ function pintarHistHoy(){
   var h = hoy(), ay = isoDe(new Date(Date.now() - 86400000));
   var L = S.filter(function(x){ return x.fecha === h || x.fecha === ay; });
   $("#histHoy").innerHTML = L.length ? L.map(filaHist).join("") :
-    '<div class="h"><span class="d">—</span><span class="muted">Nada registrado hoy ni ayer.</span><span></span></div>';
+    '<p class="vacio">Nada registrado hoy ni ayer. Termina un paso de la sesión o díctalo arriba.</p>';
 }
 
 document.addEventListener("click", function(ev){
@@ -524,7 +561,7 @@ function siguientePrompt(){
   return best.id;
 }
 function pintarWriting(conservar){
-  $$("#wTipo .chip").forEach(function(c){ c.setAttribute("aria-pressed", c.dataset.t === W.tipo); });
+  $$("#wTipo button").forEach(function(c){ c.setAttribute("aria-pressed", c.dataset.t === W.tipo); });
   var L = listaW(), hechos = cuentaPids();
   if (!conservar || !L.some(function(p){ return p.id === W.pid; })) W.pid = siguientePrompt();
   $("#wPrompt").innerHTML = L.map(function(p){
@@ -544,46 +581,57 @@ function pintarWriting(conservar){
     '<li>Segundo argumento o la otra postura, abierto con un conector de contraste (<i>However</i>, <i>That said</i>).</li>' +
     '<li>Cierre explícito que retome la posición (<i>Overall</i>, <i>That is why</i>).</li></ol></details>';
   $("#wBody").innerHTML = body;
-  if (!conservar) $("#wTxt").value = lsGet("draft_" + W.pid, "");
+  if (!conservar){ $("#wTxt").value = lsGet("draft_" + W.pid, ""); $("#wPlan").value = lsGet("plan_" + W.pid, ""); }
   if (!W.int){ W.rest = W_MIN[W.tipo] * 60; pintarReloj("#wClock", W.rest); }
   medirW(); pintarListaW();
 }
 function pintarReloj(sel, s){
   var el = $(sel), m = Math.floor(Math.abs(s) / 60), ss = Math.abs(s) % 60;
   el.textContent = (s < 0 ? "+" : "") + m + ":" + ("0" + ss).slice(-2);
-  el.classList.toggle("low", s <= 60);
+  el.classList.toggle("low", s <= (sel === "#sClock" ? 15 : 60));
 }
 var wake = null;
 function pedirWake(){ try { if (navigator.wakeLock) navigator.wakeLock.request("screen").then(function(w){ wake = w; }).catch(function(){}); } catch(e){} }
 function soltarWake(){ try { if (wake) wake.release(); } catch(e){} wake = null; }
 $("#wStart").addEventListener("click", function(){
-  if (W.int){ clearInterval(W.int); W.int = null; this.textContent = "Seguir"; soltarWake(); return; }
+  if (W.int){ clearInterval(W.int); W.int = null; this.textContent = "Seguir"; soltarWake(); pasosW(); return; }
   W.t0 = Date.now() - (W_MIN[W.tipo] * 60 - W.rest) * 1000; this.textContent = "Pausar"; pedirWake();
   W.int = setInterval(function(){ W.rest = W_MIN[W.tipo] * 60 - Math.round((Date.now() - W.t0) / 1000); pintarReloj("#wClock", W.rest); }, 500);
+  pasosW();
 });
 $("#wReset").addEventListener("click", function(){ clearInterval(W.int); W.int = null; W.rest = W_MIN[W.tipo] * 60; pintarReloj("#wClock", W.rest); $("#wStart").textContent = "Empezar reloj"; soltarWake(); });
 $("#wTipo").addEventListener("click", function(ev){ var c = ev.target.closest("[data-t]"); if (!c) return; W.tipo = c.dataset.t; lsSet("ui_wtipo", W.tipo); clearInterval(W.int); W.int = null; $("#wStart").textContent = "Empezar reloj"; pintarWriting(false); });
-$("#wPrompt").addEventListener("change", function(){ W.pid = this.value; $("#wTxt").value = lsGet("draft_" + W.pid, ""); pintarWriting(true); });
+$("#wPrompt").addEventListener("change", function(){ W.pid = this.value; $("#wTxt").value = lsGet("draft_" + W.pid, ""); $("#wPlan").value = lsGet("plan_" + W.pid, ""); pintarWriting(true); });
+$("#wPlan").addEventListener("input", function(){ lsSet("plan_" + W.pid, this.value); pasosW(); });
 $("#wTxt").addEventListener("input", function(){ lsSet("draft_" + W.pid, this.value); medirW(); });
 
 function medirW(){
-  var a = MET.analiza($("#wTxt").value), obj = W_PAL[W.tipo], R = [];
-  R.push(["Palabras", a.pal + " / " + obj, a.pal >= obj]);
-  R.push(["Párrafos", a.parrafos, W.tipo === "res" ? null : a.parrafos >= (W.tipo === "t1" ? 3 : 4)]);
-  R.push(["Palabras por frase", a.lmf, a.frases ? (a.lmf >= 12 && a.lmf <= 26) : null]);
+  var a = MET.analiza($("#wTxt").value), obj = W_PAL[W.tipo], clave = [], mas = [];
   if (W.tipo === "t1"){
-    R.push(["Overview", a.over.total ? Object.keys(a.over.items).join(", ") : "falta", a.over.total > 0]);
-    R.push(["Tendencia (tipos)", a.tend.tipos, a.tend.tipos >= 4]);
-    R.push(["Comparación (tipos)", a.comp.tipos, a.comp.tipos >= 3]);
-    R.push(["Cifras citadas", a.numeros, a.numeros >= 6]);
+    clave.push(["Overview", a.over.total ? "sí" : "falta", a.over.total > 0]);
+    clave.push(["Tendencia", a.tend.tipos + " tipos", a.tend.tipos >= 4]);
+    clave.push(["Comparación", a.comp.tipos + " tipos", a.comp.tipos >= 3]);
+    clave.push(["Cifras", a.numeros, a.numeros >= 6]);
   } else {
-    R.push(["Contraste", a.contraste, a.contraste >= 1]);
-    R.push(["Consecuencia", a.consecuencia, a.consecuencia >= 1]);
-    R.push(["Cierre explícito", a.cierre.total, a.cierre.total >= 1]);
-    R.push(["Hedges", a.hed.total, a.hed.total >= 1]);
+    clave.push(["Contraste", a.contraste, a.contraste >= 1]);
+    clave.push(["Consecuencia", a.consecuencia, a.consecuencia >= 1]);
+    clave.push(["Cierre", a.cierre.total, a.cierre.total >= 1]);
+    clave.push(["Vaguedad", a.vag.total ? Object.keys(a.vag.items).join(", ") : 0, a.vag.total === 0]);
   }
-  R.push(["Vaguedad", a.vag.total ? Object.keys(a.vag.items).join(", ") : 0, a.vag.total === 0]);
-  $("#wMet").innerHTML = R.map(function(r){ return '<div class="m ' + (r[2] === true ? "ok" : r[2] === false && a.pal > 20 ? "bad" : "") + '">' + esc(r[0]) + '<b>' + esc(r[1]) + '</b></div>'; }).join("");
+  mas.push(["Párrafos", a.parrafos, W.tipo === "res" ? null : a.parrafos >= (W.tipo === "t1" ? 3 : 4)]);
+  mas.push(["Palabras por frase", a.lmf, a.frases ? (a.lmf >= 12 && a.lmf <= 26) : null]);
+  if (W.tipo !== "t1") mas.push(["Hedges", a.hed.total, a.hed.total >= 1]);
+  if (W.tipo === "t1") mas.push(["Vaguedad", a.vag.total, a.vag.total === 0]);
+  var pinta = function(R){ return R.map(function(r){ return '<div class="m ' + (r[2] === true ? "ok" : r[2] === false && a.pal > 40 ? "bad" : "") + '">' + esc(r[0]) + '<b>' + esc(r[1]) + '</b></div>'; }).join(""); };
+  $("#wMet").innerHTML = pinta(clave); $("#wMetMas").innerHTML = pinta(mas);
+  var c = $("#wCont"); c.textContent = a.pal + " / " + obj + " palabras"; c.classList.toggle("ok", a.pal >= obj);
+  W.pal = a.pal; pasosW();
+}
+function pasosW(){
+  var li = $$("#v-writing .pasos li"), plan = $("#wPlan").value.trim().length > 10, escr = W.int || (W.pal || 0) > 20, lleno = (W.pal || 0) >= W_PAL[W.tipo];
+  var est = [true, plan, escr, lleno];
+  var actual = est.indexOf(false); if (actual < 0) actual = 3;
+  li.forEach(function(l, k){ l.className = k < actual ? "ok" : k === actual ? "on" : ""; });
 }
 $("#wSave").addEventListener("click", function(){
   var txt = $("#wTxt").value.trim(); if (MET.pal(txt).length < 20){ $("#wMsg").textContent = "El texto tiene menos de 20 palabras."; return; }
@@ -593,7 +641,7 @@ $("#wSave").addEventListener("click", function(){
     hed:a.hed.total, vag:a.vag.total, over:a.over.total, tend:a.tend.tipos, comp:a.comp.tipos, ttr:a.ttr};
   agregar("t", {fecha:hoy(), tipo:W.tipo, pid:W.pid, texto:txt.slice(0, 12000), min:min, m:m});
   registrar({act: W.tipo === "t1" ? "w_t1" : W.tipo === "t2" ? "w_t2" : "lect", min: W.tipo === "res" ? 30 : min, nota: a.pal + " palabras"});
-  lsSet("draft_" + W.pid, ""); $("#wTxt").value = "";
+  lsSet("draft_" + W.pid, ""); lsSet("plan_" + W.pid, ""); $("#wTxt").value = ""; $("#wPlan").value = "";
   $("#wMsg").textContent = "Guardado. Siguiente consigna seleccionada.";
   $("#wReset").click(); pintarWriting(false);
 });
@@ -687,9 +735,13 @@ function dibujar(p){
 var SP = {part: lsGet("ui_spart", "p2"), id:null, fase:"prep", rest:60, int:null, t0:0, cnt:{}, rec:null, grabado:false};
 var CONT = [["kind_of","kind of"],["whatever","whatever"],["idk","I don't know"],["espanol","español"],["pausa","pausa > 3 s"]];
 function listaS(){ return SP.part === "p1" ? P1 : P2; }
+function pasosS(k){ $$("#sPasos li").forEach(function(l, i){ l.className = i < k ? "ok" : i === k ? "on" : ""; }); }
 function nombreGrab(ext){ return hoy() + "_" + SP.part + "_" + SP.id.replace(/^p\d_/, "") + "_" + new Date().toTimeString().slice(0,5).replace(":", "") + "." + ext; }
 function pintarSpeaking(conservar){
-  $$("#sPart .chip").forEach(function(c){ c.setAttribute("aria-pressed", c.dataset.p === SP.part); });
+  $$("#sPart button").forEach(function(c){ c.setAttribute("aria-pressed", c.dataset.p === SP.part); });
+  var sombra = SP.part === "sh";
+  $("#sPanelHabla").hidden = sombra; $("#sPanelSombra").hidden = !sombra;
+  if (sombra){ pintarSombra(); return; }
   var L = listaS(), cuenta = {}; S.forEach(function(x){ if (x.det && x.det.item) cuenta[x.det.item + "|" + x.act] = 1; });
   var act = "s_" + SP.part;
   if (!conservar || !L.some(function(p){ return p.id === SP.id; })){
@@ -708,7 +760,8 @@ function pintarSpeaking(conservar){
     .map(function(c){ return '<label><input type="checkbox" id="chk_' + c[0] + '"> <span>' + esc(c[1]) + '</span></label>'; }).join("");
 }
 function resetS(){
-  clearInterval(SP.int); SP.int = null; soltarWake();
+  clearInterval(SP.int); SP.int = null; soltarWake(); pasosS(0);
+  if (SP.part === "sh") return;
   if (SP.part === "p2"){ SP.fase = "prep"; SP.rest = 60; $("#sStart").textContent = "Preparar 1′"; }
   else { SP.fase = "hablar"; SP.rest = 300; $("#sStart").textContent = "Empezar 5′"; }
   pintarReloj("#sClock", SP.rest);
@@ -721,9 +774,9 @@ $("#sStart").addEventListener("click", function(){
   var b = this;
   if (SP.int){ resetS(); return; }
   if (SP.part === "p2" && SP.fase === "prep"){
-    b.textContent = "Parar"; correrS(60, function(){ SP.fase = "hablar"; toast("Empieza a hablar: 2 minutos"); if (!SP.rec) $("#recBtn").click();
-      correrS(120, function(){ b.textContent = "Otra vez"; SP.fase = "prep"; soltarWake(); if (SP.rec) SP.rec.stop(); toast("Tiempo. Cierra la idea y marca la lista."); }); });
-  } else { b.textContent = "Parar"; correrS(SP.part === "p2" ? 120 : 300, function(){ b.textContent = "Otra vez"; soltarWake(); if (SP.rec) SP.rec.stop(); toast("Tiempo."); }); }
+    b.textContent = "Parar"; correrS(60, function(){ SP.fase = "hablar"; pasosS(1); toast("Empieza a hablar: 2 minutos"); if (!SP.rec) $("#recBtn").click();
+      correrS(120, function(){ b.textContent = "Otra vez"; SP.fase = "prep"; soltarWake(); pasosS(2); if (SP.rec) SP.rec.stop(); toast("Tiempo. Cierra la idea y marca la lista."); }); });
+  } else { b.textContent = "Parar"; pasosS(1); correrS(SP.part === "p2" ? 120 : 300, function(){ b.textContent = "Otra vez"; soltarWake(); pasosS(2); if (SP.rec) SP.rec.stop(); toast("Tiempo."); }); }
 });
 $("#recBtn").addEventListener("click", function(){
   if (SP.rec){ SP.rec.stop(); return; }
@@ -733,6 +786,35 @@ $("#recBtn").addEventListener("click", function(){
     encolarAudio("grabaciones", n, blob);
     $("#recEstado").textContent = "Guardada: " + n + ". Escúchala antes de marcar la lista.";
   }, function(r){ SP.rec = r; $("#recBtn").textContent = r ? "Parar grabación" : "Grabar mi respuesta"; if (r) $("#recEstado").textContent = "Grabando…"; });
+});
+var SH = {i: lsGet("ui_sh_i", 0) % SOMBRA.length, rep: 0, t0: 0, vistas: {}};
+function vozIngles(){
+  var vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  return vs.filter(function(v){ return /en-GB/i.test(v.lang); })[0] || vs.filter(function(v){ return /^en/i.test(v.lang); })[0] || null;
+}
+function pintarSombra(){
+  var f = SOMBRA[SH.i];
+  $("#shTipo").textContent = f.k; $("#shFrase").textContent = f.t;
+  $("#shBarra").style.width = ((SH.i + 1) / SOMBRA.length * 100).toFixed(0) + "%";
+  $("#shEstado").textContent = "Frase " + (SH.i + 1) + " de " + SOMBRA.length + " · repeticiones de esta sesión: " + SH.rep +
+    (window.speechSynthesis ? "" : " · este navegador no tiene voz: léela en voz alta");
+}
+function decir(rate){
+  if (!window.speechSynthesis) return;
+  if (!SH.t0) SH.t0 = Date.now();
+  speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(SOMBRA[SH.i].t), v = vozIngles();
+  if (v) u.voice = v; u.lang = v ? v.lang : "en-GB"; u.rate = rate;
+  speechSynthesis.speak(u); SH.rep++; SH.vistas[SH.i] = 1; pintarSombra();
+}
+$("#shOir").addEventListener("click", function(){ decir(0.95); });
+$("#shLento").addEventListener("click", function(){ decir(0.75); });
+$("#shOtra").addEventListener("click", function(){ SH.i = (SH.i + 1) % SOMBRA.length; lsSet("ui_sh_i", SH.i); pintarSombra(); decir(0.95); });
+$("#shGuardar").addEventListener("click", function(){
+  var min = SH.t0 ? Math.max(1, Math.round((Date.now() - SH.t0) / 60000)) : ACT.shadow.min, n = Object.keys(SH.vistas).length;
+  if (!SH.rep){ toast("Escucha y repite al menos una frase antes de registrar."); return; }
+  registrar({act:"shadow", min:min, nota:n + " frases · " + SH.rep + " repeticiones"});
+  SH = {i:(SH.i + 1) % SOMBRA.length, rep:0, t0:0, vistas:{}}; lsSet("ui_sh_i", SH.i); pintarSombra();
 });
 $("#sReset").addEventListener("click", function(){ resetS(); SP.cnt = {}; pintarSpeaking(true); });
 $("#sPart").addEventListener("click", function(ev){ var c = ev.target.closest("[data-p]"); if (!c) return; SP.part = c.dataset.p; lsSet("ui_spart", SP.part); SP.cnt = {}; resetS(); pintarSpeaking(false); });
@@ -838,16 +920,20 @@ $("#bImport").addEventListener("change", function(){
    ════════════════════════════════════════════════════════════════════ */
 function pintarMaterial(){
   var orden = ["app","web","drive","portatil"];
-  var L = ACTS.filter(function(a){ return a.id !== "otro"; }).slice().sort(function(a, b){ return orden.indexOf(a.donde) - orden.indexOf(b.donde); });
-  $("#matList").innerHTML = L.map(function(a){
-    var priv = a.url && a.url.indexOf("priv:") === 0;
-    return '<div class="card row"><div class="grow"><div class="row" style="gap:8px"><span class="sk" style="background:var(--s-' + a.skill + ')"></span><b>' + esc(a.t) + '</b><span class="pill ' + a.donde + '">' + a.donde + '</span>' +
-      (priv ? '<span class="pill web">cifrado</span>' : "") + '</div>' + (a.d ? '<p class="small muted" style="margin-top:4px">' + esc(a.d) + '</p>' : "") + '</div>' + enlace(a) + '</div>';
-  }).join("") + '<p class="small muted">Las herramientas cifradas guardan su propio avance (cajas de tarjetas, respuestas) en este dispositivo. Al terminar, márcalas en Hoy para que cuenten aquí.</p>';
+  var grupos = Object.keys(SKILLS).map(function(k){
+    var L = ACTS.filter(function(a){ return a.skill === k && a.id !== "otro"; }).sort(function(a, b){ return orden.indexOf(a.donde) - orden.indexOf(b.donde); });
+    if (!L.length) return "";
+    return '<div class="mat-grupo"><h3>' + SKILLS[k] + '</h3><div class="mat-lista">' + L.map(function(a){
+      var priv = a.url && a.url.indexOf("priv:") === 0;
+      return '<div class="mat"><span class="sk" style="background:var(--s-' + a.skill + ')"></span><div class="t"><b>' + esc(a.t) + '</b>' +
+        '<p><span class="pill ' + a.donde + '">' + a.donde + '</span>' + (priv ? ' <span class="pill web">cifrado</span>' : "") + ' ' + a.min + '′' + (a.d ? " · " + esc(a.d) : "") + '</p></div>' + enlace(a) + '</div>';
+    }).join("") + '</div></div>';
+  }).join("");
+  $("#matList").innerHTML = grupos + '<p class="nota" style="margin-top:16px">Al cerrar una herramienta cifrada se registra sola con sus minutos y su puntuación.</p>';
 }
 function vista(){
   var h = (location.hash || "#hoy").slice(1), sub = null;
-  var m = h.match(/^(writing|speaking)-(t1|t2|res|p1|p2|p3)$/);
+  var m = h.match(/^(writing|speaking)-(t1|t2|res|p1|p2|p3|sh)$/);
   if (m){ h = m[1]; sub = m[2]; }
   if (!document.getElementById("v-" + h)) h = "hoy";
   $$("[data-view]").forEach(function(s){ s.hidden = s.id !== "v-" + h; });
@@ -862,7 +948,9 @@ var pintadoWS = false;
 function pintarTodo(){
   var d = new Date();
   $("#hdrFecha").textContent = DIAS[d.getDay()] + " " + d.getDate() + " " + MESES[d.getMonth()] + " " + d.getFullYear();
-  pintarCuenta(); pintarPlan(); pintarHistHoy(); pintarProgreso(); pintarDrive();
+  pintarCuenta(); pintarPlan(); pintarRamas(); pintarHistHoy(); pintarProgreso(); pintarDrive();
+  if (DRIVE.configurado() && !DRIVE.consentidoAntes()) $("#pDrive").open = true;
+  if (!PERFIL) $("#pPrivado").open = true;
   if (!pintadoWS){ pintarWriting(false); pintarSpeaking(false); pintadoWS = true; } else pintarListaW();
   pintarMaterial();
 }

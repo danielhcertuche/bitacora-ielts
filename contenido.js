@@ -13,8 +13,8 @@ var ACTS = [
   {id:"s_p1", t:"Speaking Part 1 · preguntas cortas", skill:"speaking", min:5, donde:"app", url:"#speaking-p1", gap:"speaking"},
   {id:"s_p2", t:"Speaking Part 2 · cue card 1′ + 2′", skill:"speaking", min:10, donde:"app", url:"#speaking-p2", gap:"speaking"},
   {id:"s_p3", t:"Speaking Part 3 · discusión", skill:"speaking", min:10, donde:"app", url:"#speaking-p3", gap:"speaking"},
-  {id:"shadow", t:"Shadowing de tu narración (versión lenta)", skill:"speaking", min:10, donde:"portatil", gap:"pronunciacion",
-   d:"Con los mp3 de tu narración guardados en Drive, en la versión lenta."},
+  {id:"shadow", t:"Shadowing · escuchar y repetir", skill:"speaking", min:10, donde:"app", url:"#speaking-sh", gap:"pronunciacion",
+   d:"16 frases modelo con voz británica: escuchas, repites, y otra vez más rápido."},
   {id:"tarjetas", t:"Tarjetas · repaso espaciado", skill:"otros", min:15, donde:"app", url:"priv:tarjetas", gap:"inventario"},
   {id:"discurso", t:"Discurso · chunks y párrafos", skill:"writing", min:20, donde:"app", url:"priv:discurso", gap:"writing_t2"},
   {id:"build", t:"Build a Sentence · precisión gramatical", skill:"otros", min:15, donde:"app", url:"priv:build", gap:"gramatica", total:40},
@@ -115,4 +115,35 @@ var P2 = [
    p3:["Is it better to set small goals or big ones?","Do schools put too much pressure on students?","What stops people from reaching their goals?"]},
   {id:"p2_conversa", t:"Describe an interesting conversation you had with someone older than you.", b:["who the person was","where you had the conversation","what you talked about","and explain why it was interesting."],
    p3:["What can young people learn from older generations?","Do people talk less face to face than before?","Should families spend more time together?"]}
+];
+
+/* Las cuatro ramas de un curso equilibrado (Nation, 2007): tiempo parecido en cada una.
+ * Cada actividad cuenta para una rama; la app propone la que va más baja. */
+var RAMAS = {
+  entrada:{t:"Entrada", d:"leer y escuchar para entender", color:"var(--s-reading)", acts:["lect","r_test2","r_full","r_test1","l_full","l_escuchar"], sugerir:"l_full"},
+  produccion:{t:"Producción", d:"escribir y hablar con tus ideas", color:"var(--s-writing)", acts:["w_t1","w_t2","s_p1","s_p2","s_p3","tutoria"], sugerir:"w_t2"},
+  forma:{t:"Forma", d:"vocabulario, gramática, expresiones", color:"var(--s-listening)", acts:["tarjetas","build","discurso"], sugerir:"build"},
+  fluidez:{t:"Fluidez", d:"repetir lo conocido más rápido", color:"var(--s-speaking)", acts:["shadow"], sugerir:"shadow"}
+};
+var RAMA_DE = {}; Object.keys(RAMAS).forEach(function(r){ RAMAS[r].acts.forEach(function(a){ RAMA_DE[a] = r; }); });
+
+/* Shadowing: frases modelo con las piezas que faltan en tu discurso (cierre, reparación,
+ * contraste, consecuencia, hedging) y palabras que cuesta pronunciar. Se escuchan y se repiten. */
+var SOMBRA = [
+  {t:"Overall, the evidence suggests that the method works, although it has clear limitations.", k:"cierre + concesión"},
+  {t:"Let me put that another way: the problem isn't the data, it's how we read it.", k:"reparación"},
+  {t:"That's why I'd argue that funding basic research is a long-term investment.", k:"cierre"},
+  {t:"To some extent, I agree, but it depends on how we define success.", k:"hedging"},
+  {t:"What I mean is that small daily habits matter more than occasional effort.", k:"reparación"},
+  {t:"In short, the benefits clearly outweigh the drawbacks.", k:"cierre"},
+  {t:"Particularly in large cities, public transport is the most efficient option.", k:"pronunciación: particularly"},
+  {t:"The number of international students has risen steadily since 2016.", k:"Task 1: tendencia"},
+  {t:"Compared with 2010, students spent twice as much time on social media.", k:"Task 1: comparación"},
+  {t:"I'm not entirely sure, but I'd say it happened around three years ago.", k:"sustituto de I don't know"},
+  {t:"On the other hand, working from home can make it harder to switch off.", k:"contraste"},
+  {t:"As a result, many young scientists decide to move abroad.", k:"consecuencia"},
+  {t:"The point is that concentration is a skill, and it can be trained.", k:"cierre"},
+  {t:"Having said that, I think there's a better way to deal with the problem.", k:"contraste"},
+  {t:"Off the top of my head, I'd say the main reason is the cost.", k:"sustituto de I don't know"},
+  {t:"This suggests that the trend will probably continue over the next decade.", k:"hedging"}
 ];
