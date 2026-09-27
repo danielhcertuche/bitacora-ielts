@@ -933,8 +933,11 @@ function pintarMaterial(){
 }
 function vista(){
   var h = (location.hash || "#hoy").slice(1), sub = null;
-  var m = h.match(/^(writing|speaking)-(t1|t2|res|p1|p2|p3|sh)$/);
-  if (m){ h = m[1]; sub = m[2]; }
+  var m = h.match(/^(writing|speaking)-(t1|t2|res|p1|p2|p3|sh)(\d*)$/);
+  if (m){ h = m[1]; sub = m[2];
+    /* #speaking-sh7 abre el shadowing en la frase 7 (enlace de los recordatorios del calendario) */
+    if (sub === "sh" && m[3]){ SH.i = (Math.max(1, +m[3]) - 1) % SOMBRA.length; lsSet("ui_sh_i", SH.i); if (SP.part === "sh") pintarSombra(); }
+  }
   if (!document.getElementById("v-" + h)) h = "hoy";
   $$("[data-view]").forEach(function(s){ s.hidden = s.id !== "v-" + h; });
   $$("nav.tabs a").forEach(function(a){ if (a.dataset.tab === h) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
