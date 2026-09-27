@@ -106,6 +106,18 @@
       var dir = await carpeta(RAIZ), f = await buscar("bitacora.json", dir);
       await subir("bitacora.json", dir, new Blob([JSON.stringify(obj)], {type: "application/json"}), "application/json", f && f.id);
     },
+    /* Tamaño total de lo que la app guardó en Drive (bitácora + subcarpetas). */
+    uso: async function () {
+      var dir = await carpeta(RAIZ), bytes = 0, n = 0, pila = [dir];
+      while (pila.length) {
+        var id = pila.pop();
+        var r = await (await llamar(API + "/files?pageSize=1000&fields=files(id,size,mimeType)&q=" + q("'" + id + "' in parents and trashed=false"))).json();
+        (r.files || []).forEach(function (f) {
+          if (/folder$/.test(f.mimeType)) pila.push(f.id); else { n++; bytes += +f.size || 0; }
+        });
+      }
+      return {archivos: n, bytes: bytes};
+    },
     subirAudio: async function (subcarpeta, nombre, blob) {
       var dir = await carpeta(subcarpeta, await carpeta(RAIZ));
       return subir(nombre, dir, blob, blob.type || "audio/webm");
