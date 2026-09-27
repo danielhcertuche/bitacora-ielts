@@ -779,5 +779,6 @@ function pintarTodo(){
 
 if (!SR) $("#micAyuda").textContent = "Este navegador no transcribe voz: el botón graba una nota, o escribe abajo. En Chrome de Android sí transcribe.";
 reconstruir(); pintarTodo(); vista(); pintarCola(); iniciarPrivado();
-if (DRIVE.configurado() && DRIVE.consentidoAntes()) sincronizar(false); else pintarDrive();
+if (DRIVE.configurado() && DRIVE.consentidoAntes()) sincronizar(false);
+else { pintarDrive(); if (DRIVE.configurado()) estadoSync("off", "toca para conectar Drive"); }
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
