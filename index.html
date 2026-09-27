@@ -16,209 +16,286 @@
 </head>
 <body>
 <header class="top">
-  <div class="wrap">
+  <div class="wrap top-in">
     <div>
-      <div class="label" id="hdrFecha">—</div>
+      <div class="eyebrow" id="hdrFecha">—</div>
       <h1>Bitácora IELTS</h1>
     </div>
-    <button type="button" class="sync ghost" id="sync"><span class="dot"></span><span>solo en este dispositivo</span></button>
+    <button type="button" class="sync" id="sync"><span class="dot"></span><span>solo en este dispositivo</span></button>
   </div>
 </header>
 
 <main class="wrap">
   <!-- ═════════════ HOY ═════════════ -->
-  <section id="v-hoy" data-view>
-    <div class="voz">
-      <div class="row" style="gap:14px;flex-wrap:nowrap">
-        <button type="button" class="mic" id="micBtn" aria-label="Dictar lo que hiciste">
-          <svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
-        </button>
-        <div class="grow">
-          <h3>Cuéntalo en voz alta</h3>
-          <p class="small muted" id="micAyuda">«Hice veinte minutos de task 2 y tarjetas quince» · «ayer listening oficial 31 de 40»</p>
+  <section id="v-hoy" data-view class="vista">
+    <div class="hoy-grid">
+      <div class="col">
+        <div class="objetivo" id="objetivo">
+          <div id="cuenta"></div>
+          <div class="banda" id="banda"></div>
         </div>
+
+        <section class="bloque" aria-labelledby="tSesion">
+          <div class="bloque-cab">
+            <h2 id="tSesion">Sesión de hoy</h2>
+            <span class="pasos-txt" id="planAvance"></span>
+          </div>
+          <div class="seg" id="budgets" role="group" aria-label="Tiempo disponible"></div>
+          <p class="nota" id="budgetNota"></p>
+          <ol class="plan" id="plan"></ol>
+        </section>
       </div>
-      <p class="transcrito" id="transcrito" style="margin-top:10px"></p>
-      <form id="fTexto" class="row" style="margin-top:6px">
-        <input id="texto" class="grow" type="text" autocomplete="off" placeholder="…o escríbelo aquí, también sin conexión">
-        <button type="submit">Interpretar</button>
-      </form>
-      <div id="props" style="margin-top:8px"></div>
-      <div id="notasCola" class="cola" style="margin-top:6px"></div>
+
+      <div class="col">
+        <section class="bloque" aria-labelledby="tReg">
+          <div class="bloque-cab"><h2 id="tReg">Registrar</h2></div>
+          <div class="card registro">
+            <div class="reg-fila">
+              <button type="button" class="mic" id="micBtn" aria-label="Dictar lo que hiciste">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+              </button>
+              <form id="fTexto" class="reg-form">
+                <label class="sr" for="texto">Qué hiciste</label>
+                <input id="texto" type="text" autocomplete="off" placeholder="«tarjetas 15 min y task 2 veinte»">
+                <button type="submit" class="btn-sec">Anotar</button>
+              </form>
+            </div>
+            <p class="nota" id="micAyuda">Toca el micrófono y dilo, o escríbelo. Toca aquí para dictar en inglés.</p>
+            <p class="transcrito" id="transcrito"></p>
+            <div id="props"></div>
+            <p class="nota" id="notasCola"></p>
+          </div>
+        </section>
+
+        <section class="bloque" aria-labelledby="tRamas">
+          <div class="bloque-cab"><h2 id="tRamas">Equilibrio · 7 días</h2></div>
+          <div class="card" id="ramas"></div>
+        </section>
+
+        <section class="bloque" aria-labelledby="tHist">
+          <div class="bloque-cab"><h2 id="tHist">Hoy y ayer</h2></div>
+          <div class="hist" id="histHoy"></div>
+        </section>
+      </div>
     </div>
-
-    <div id="cuenta" class="stack" style="margin-top:16px"></div>
-    <div class="banda" id="banda"></div>
-
-    <h2>¿Cuánto tiempo tienes hoy?</h2>
-    <div class="chips" id="budgets" role="group" aria-label="Tiempo disponible"></div>
-    <p class="small muted" id="budgetNota" style="margin-top:8px"></p>
-    <div class="plan" id="plan" style="margin-top:12px"></div>
-
-    <h2>Hoy y ayer</h2>
-    <div class="hist" id="histHoy"></div>
   </section>
 
   <!-- ═════════════ WRITING ═════════════ -->
-  <section id="v-writing" data-view hidden>
-    <h2>Writing</h2>
-    <div class="chips" id="wTipo" role="group" aria-label="Tipo de tarea">
-      <button class="chip" type="button" data-t="t1">Task 1 · 20′ · 150+</button>
-      <button class="chip" type="button" data-t="t2">Task 2 · 40′ · 250+</button>
-      <button class="chip" type="button" data-t="res">Resumen de lectura · 10′ · 80+</button>
+  <section id="v-writing" data-view class="vista" hidden>
+    <div class="vista-cab">
+      <h2>Writing</h2>
+      <div class="seg" id="wTipo" role="group" aria-label="Tipo de tarea">
+        <button type="button" data-t="t1">Task 1<small>20′ · 150+</small></button>
+        <button type="button" data-t="t2">Task 2<small>40′ · 250+</small></button>
+        <button type="button" data-t="res">Resumen<small>10′ · 80+</small></button>
+      </div>
     </div>
-    <div class="row" style="margin-top:12px"><label class="f grow">Consigna<select id="wPrompt"></select></label></div>
-    <div id="wBody" class="stack" style="margin-top:12px"></div>
-    <div class="row" style="margin-top:12px">
+    <ol class="pasos" aria-label="Pasos"><li>Lee la consigna</li><li>Plan de 3 líneas</li><li>Escribe con reloj</li><li>Revisa y guarda</li></ol>
+
+    <div class="w-grid">
+      <div class="col">
+        <label class="campo"><span>Consigna</span><select id="wPrompt"></select></label>
+        <div id="wBody" class="stack"></div>
+      </div>
+      <div class="col">
+        <label class="campo"><span>Plan (tesis · apoyo · objeción · cierre) — puede ir en español</span>
+          <textarea id="wPlan" class="corto" rows="3" placeholder="1. …&#10;2. …&#10;3. …"></textarea></label>
+        <label class="campo"><span>Tu texto</span>
+          <textarea id="wTxt" placeholder="Escribe aquí. El borrador se guarda solo en este dispositivo."></textarea></label>
+        <div class="metrics" id="wMet"></div>
+        <details class="mas"><summary>Más métricas</summary><div class="metrics" id="wMetMas"></div></details>
+        <p class="nota" id="wMsg"></p>
+      </div>
+    </div>
+    <div class="barra-accion" id="wBarra">
       <span class="clock" id="wClock">20:00</span>
-      <button type="button" id="wStart" class="primary">Empezar reloj</button>
-      <button type="button" id="wReset" class="ghost">Reiniciar</button>
+      <span class="contador" id="wCont">0 / 250</span>
+      <button type="button" id="wReset" class="btn-ter" aria-label="Reiniciar reloj">Reiniciar</button>
+      <button type="button" id="wStart" class="btn-sec">Empezar reloj</button>
+      <button type="button" class="btn-pri" id="wSave">Guardar</button>
     </div>
-    <textarea id="wTxt" style="margin-top:12px" placeholder="Escribe aquí. El borrador se guarda en este dispositivo mientras escribes."></textarea>
-    <div class="metrics" id="wMet" style="margin-top:10px"></div>
-    <div class="row" style="margin-top:12px">
-      <button type="button" class="primary" id="wSave">Guardar texto</button>
-      <span class="small muted" id="wMsg"></span>
-    </div>
-    <h2>Tus textos</h2>
-    <div id="wList" class="stack"></div>
+
+    <section class="bloque">
+      <div class="bloque-cab"><h2>Tus textos</h2></div>
+      <div id="wList" class="stack"></div>
+    </section>
   </section>
 
   <!-- ═════════════ SPEAKING ═════════════ -->
-  <section id="v-speaking" data-view hidden>
-    <h2>Speaking</h2>
-    <div class="chips" id="sPart" role="group" aria-label="Parte">
-      <button class="chip" type="button" data-p="p1">Part 1 · 4–5′</button>
-      <button class="chip" type="button" data-p="p2">Part 2 · 1′ + 2′</button>
-      <button class="chip" type="button" data-p="p3">Part 3 · 4–5′</button>
-    </div>
-    <div class="row" style="margin-top:12px"><label class="f grow">Tema<select id="sItem"></select></label></div>
-    <div id="sCard" style="margin-top:12px"></div>
-    <div class="row" style="margin-top:12px">
-      <span class="clock" id="sClock">1:00</span>
-      <button type="button" id="sStart" class="primary">Preparar 1′</button>
-      <button type="button" id="sReset" class="ghost">Reiniciar</button>
-    </div>
-    <div class="card rec" style="margin-top:12px">
-      <button type="button" id="recBtn">Grabar mi respuesta</button>
-      <span class="small muted" id="recEstado">Se guarda en este dispositivo y sube a Drive → grabaciones.</span>
-      <audio id="recAudio" controls hidden></audio>
+  <section id="v-speaking" data-view class="vista" hidden>
+    <div class="vista-cab">
+      <h2>Speaking</h2>
+      <div class="seg" id="sPart" role="group" aria-label="Parte">
+        <button type="button" data-p="p1">Part 1<small>4–5′</small></button>
+        <button type="button" data-p="p2">Part 2<small>1′ + 2′</small></button>
+        <button type="button" data-p="p3">Part 3<small>4–5′</small></button>
+        <button type="button" data-p="sh">Shadowing<small>10′</small></button>
+      </div>
     </div>
 
-    <h3 style="margin-top:16px">Cuenta mientras hablas (toca para sumar)</h3>
-    <div class="row" id="sCount" style="margin-top:8px"></div>
-    <h3 style="margin-top:16px">Al terminar</h3>
-    <div class="checks card" id="sChecks" style="margin-top:8px"></div>
-    <details class="card" style="margin-top:10px">
-      <summary>Fórmulas de cierre y de reparación</summary>
-      <div class="small" style="margin-top:8px">
-        <p><b>Cierre:</b> So, overall, … · That's why … · The point is … · In short, … · What this shows is …</p>
-        <p style="margin-top:6px"><b>Reparación (retener el turno):</b> Let me put that another way. · What I mean is … ·
-          Let me rephrase that. · How can I put this … · Sorry, let me start that sentence again.</p>
-        <p style="margin-top:6px"><b>Sustitutos de <i>kind of</i> / <i>I don't know</i>:</b> roughly · to some extent ·
-          I'm not entirely sure, but … · I'd say … · Off the top of my head …</p>
+    <div id="sPanelHabla">
+      <ol class="pasos" id="sPasos" aria-label="Pasos"><li>Prepara</li><li>Habla y graba</li><li>Revisa</li></ol>
+      <div class="w-grid">
+        <div class="col">
+          <label class="campo"><span>Tema</span><select id="sItem"></select></label>
+          <div id="sCard"></div>
+          <details class="mas"><summary>Fórmulas de cierre y de reparación</summary>
+            <div class="nota" style="margin-top:8px">
+              <p><b>Cierre:</b> So, overall, … · That's why … · The point is … · In short, …</p>
+              <p><b>Reparación:</b> Let me put that another way. · What I mean is … · Let me rephrase that.</p>
+              <p><b>En vez de <i>kind of</i> / <i>I don't know</i>:</b> roughly · to some extent · I'd say … · Off the top of my head …</p>
+            </div>
+          </details>
+        </div>
+        <div class="col">
+          <div class="card reloj-card">
+            <span class="clock grande" id="sClock">1:00</span>
+            <div class="fila-btn">
+              <button type="button" id="sStart" class="btn-pri">Preparar 1′</button>
+              <button type="button" id="sReset" class="btn-ter">Reiniciar</button>
+            </div>
+            <div class="rec">
+              <button type="button" id="recBtn" class="btn-sec">Grabar mi respuesta</button>
+              <audio id="recAudio" controls hidden></audio>
+            </div>
+            <p class="nota" id="recEstado">En Part 2 la grabación empieza sola al terminar el minuto de preparación.</p>
+          </div>
+          <h3 class="sub">Cuenta mientras hablas</h3>
+          <div class="contadores" id="sCount"></div>
+          <h3 class="sub">Al terminar</h3>
+          <div class="checks card" id="sChecks"></div>
+          <div class="fila-btn" style="margin-top:12px">
+            <button type="button" class="btn-pri" id="sSave">Guardar sesión</button>
+            <span class="nota" id="sMsg"></span>
+          </div>
+        </div>
       </div>
-    </details>
-    <div class="row" style="margin-top:12px">
-      <button type="button" class="primary" id="sSave">Guardar sesión</button>
-      <span class="small muted" id="sMsg"></span>
+    </div>
+
+    <div id="sPanelSombra" hidden>
+      <ol class="pasos" aria-label="Pasos"><li>Escucha</li><li>Repite a la vez</li><li>Otra vez, más rápido</li></ol>
+      <div class="card sombra">
+        <p class="eyebrow" id="shTipo">—</p>
+        <p class="sombra-frase" id="shFrase">—</p>
+        <div class="fila-btn">
+          <button type="button" class="btn-pri" id="shOir">Escuchar</button>
+          <button type="button" class="btn-sec" id="shLento">Más lento</button>
+          <button type="button" class="btn-sec" id="shOtra">Siguiente</button>
+        </div>
+        <div class="progreso-linea" aria-hidden="true"><i id="shBarra"></i></div>
+        <p class="nota" id="shEstado">Frase 1 de 16 · repeticiones: 0</p>
+      </div>
+      <div class="fila-btn" style="margin-top:12px">
+        <button type="button" class="btn-pri" id="shGuardar">Terminar y registrar</button>
+      </div>
     </div>
   </section>
 
   <!-- ═════════════ PROGRESO ═════════════ -->
-  <section id="v-progreso" data-view hidden>
-    <h2>Esta semana</h2>
+  <section id="v-progreso" data-view class="vista" hidden>
+    <div class="vista-cab"><h2>Progreso</h2></div>
     <div class="kpis" id="kpis"></div>
-    <h2>Minutos por habilidad · últimos 14 días</h2>
-    <div class="bars card" id="barsSkill"></div>
-    <h2>Lo que falta para el examen</h2>
-    <p class="small muted" id="gapsNota">Las metas se llenan solas con lo que registras.</p>
-    <div class="card" id="gaps" style="margin-top:8px"></div>
-    <h2>Simulacros y puntuaciones</h2>
-    <div class="tablewrap card" id="scores"></div>
-    <h2>Evolución de tus textos</h2>
-    <div class="tablewrap card" id="txtEvo"></div>
 
-    <h2>Ajustes</h2>
-    <form id="fCfg" class="card stack">
-      <div class="row">
-        <label class="f">Fecha del examen<input id="cfgFecha" type="date"></label>
-        <label class="f">Cierre de la solicitud<input id="cfgCierre" type="date"></label>
-        <label class="f">Banda objetivo<select id="cfgBanda"></select></label>
-        <label class="f">Minutos por semana<input id="cfgMeta" type="number" min="60" max="1500" step="15" style="width:110px"></label>
-      </div>
-      <div class="row"><button type="submit" class="primary">Guardar ajustes</button><span class="small muted" id="cfgMsg"></span></div>
-    </form>
-
-    <h2>Almacenamiento</h2>
-    <div class="card stack">
-      <p class="small" id="driveTxt"></p>
-      <div class="row">
-        <button type="button" id="driveBtn" class="primary">Conectar Google Drive</button>
-        <button type="button" id="syncBtn">Sincronizar ahora</button>
-      </div>
-      <p class="small muted" id="driveMsg"></p>
-      <p class="small muted" id="usoTxt"></p>
+    <div class="p-grid">
+      <section class="bloque">
+        <div class="bloque-cab"><h2>Lo que falta para el examen</h2></div>
+        <p class="nota" id="gapsNota">Las metas se llenan solas con lo que registras.</p>
+        <div class="card" id="gaps"></div>
+      </section>
+      <section class="bloque">
+        <div class="bloque-cab"><h2>Minutos por habilidad · 14 días</h2></div>
+        <div class="bars card" id="barsSkill"></div>
+        <div class="bloque-cab" style="margin-top:24px"><h2>Simulacros y puntuaciones</h2></div>
+        <div class="tablewrap card" id="scores"></div>
+        <div class="bloque-cab" style="margin-top:24px"><h2>Evolución de tus textos</h2></div>
+        <div class="tablewrap card" id="txtEvo"></div>
+      </section>
     </div>
 
-    <h2>Contenido privado</h2>
-    <form id="fClave" class="card stack">
-      <p class="small" id="claveTxt">Tu diagnóstico y las herramientas con tus fallos reales viajan cifrados. Escribe tu frase una vez en cada dispositivo.</p>
-      <div class="row" id="claveFila">
-        <input id="clave" type="password" class="grow" autocomplete="current-password" placeholder="frase de paso">
-        <button type="submit" class="primary">Desbloquear</button>
-      </div>
-      <div class="row"><span class="small muted" id="claveMsg"></span><button type="button" class="ghost" id="claveOlvidar" hidden>Olvidar en este dispositivo</button></div>
-    </form>
-
-    <h2>Copia de seguridad</h2>
-    <div class="card stack">
-      <p class="small">Con Drive conectado la copia es automática. Sin Drive, descárgala de vez en cuando.
-        «Restaurar» también acepta la copia de la bitácora anterior.</p>
-      <div class="row">
-        <button type="button" id="bExport">Descargar copia</button>
-        <label class="btn" for="bImport">Restaurar desde archivo</label>
-        <input id="bImport" type="file" accept="application/json,.json" hidden>
-        <span class="small muted" id="bMsg"></span>
-      </div>
-    </div>
+    <section class="bloque">
+      <div class="bloque-cab"><h2>Ajustes y datos</h2></div>
+      <details class="panel" id="pAjustes"><summary>Examen y metas</summary>
+        <form id="fCfg" class="stack">
+          <div class="campos">
+            <label class="campo"><span>Fecha del examen</span><input id="cfgFecha" type="date"></label>
+            <label class="campo"><span>Cierre de la solicitud</span><input id="cfgCierre" type="date"></label>
+            <label class="campo"><span>Banda objetivo</span><select id="cfgBanda"></select></label>
+            <label class="campo"><span>Minutos por semana</span><input id="cfgMeta" type="number" min="60" max="1500" step="15"></label>
+          </div>
+          <div class="fila-btn"><button type="submit" class="btn-pri">Guardar ajustes</button><span class="nota" id="cfgMsg"></span></div>
+        </form>
+      </details>
+      <details class="panel" id="pDrive"><summary>Google Drive</summary>
+        <div class="stack">
+          <p class="nota" id="driveTxt"></p>
+          <div class="fila-btn">
+            <button type="button" id="driveBtn" class="btn-pri">Conectar Google Drive</button>
+            <button type="button" id="syncBtn" class="btn-sec">Sincronizar ahora</button>
+          </div>
+          <p class="nota" id="driveMsg"></p>
+          <p class="nota" id="usoTxt"></p>
+        </div>
+      </details>
+      <details class="panel" id="pPrivado"><summary>Contenido privado</summary>
+        <form id="fClave" class="stack">
+          <p class="nota" id="claveTxt">Tu diagnóstico y las herramientas con tus fallos reales viajan cifrados. Escribe tu frase una vez en cada dispositivo.</p>
+          <div class="fila-btn" id="claveFila">
+            <label class="sr" for="clave">Frase de paso</label>
+            <input id="clave" type="password" class="grow" autocomplete="current-password" placeholder="frase de paso">
+            <button type="submit" class="btn-pri">Desbloquear</button>
+          </div>
+          <div class="fila-btn"><span class="nota" id="claveMsg"></span><button type="button" class="btn-ter" id="claveOlvidar" hidden>Olvidar en este dispositivo</button></div>
+        </form>
+      </details>
+      <details class="panel"><summary>Copia de seguridad</summary>
+        <div class="stack">
+          <p class="nota">Con Drive conectado la copia es automática. «Restaurar» también acepta la copia de la bitácora anterior.</p>
+          <div class="fila-btn">
+            <button type="button" id="bExport" class="btn-sec">Descargar copia</button>
+            <label class="btn-sec" for="bImport">Restaurar desde archivo</label>
+            <input id="bImport" type="file" accept="application/json,.json" hidden>
+          </div>
+          <p class="nota" id="bMsg"></p>
+        </div>
+      </details>
+    </section>
   </section>
 
   <!-- ═════════════ MATERIAL ═════════════ -->
-  <section id="v-material" data-view hidden>
-    <h2>Material</h2>
-    <p class="small muted">Lo marcado <span class="pill app">app</span> funciona aquí, también sin conexión una vez abierto.
-      <span class="pill portatil">portátil</span> vive en el portátil; al terminar, regístralo aquí.</p>
-    <div id="matList" class="stack" style="margin-top:12px"></div>
-    <h2>Formato del IELTS Academic</h2>
-    <div class="tablewrap card">
-      <table class="simple">
-        <thead><tr><th>Sección</th><th>Tiempo</th><th>Qué es</th></tr></thead>
-        <tbody>
-          <tr><td>Listening</td><td class="n">≈30′</td><td>4 partes, 40 preguntas: formularios, mapas, MCQ, emparejar</td></tr>
-          <tr><td>Reading</td><td class="n">60′</td><td>3 pasajes, 40 preguntas. Sin tiempo extra para pasar respuestas</td></tr>
-          <tr><td>Writing</td><td class="n">60′</td><td>Task 1 (150+ palabras, ~20′) · Task 2 (250+, ~40′, vale el doble)</td></tr>
-          <tr><td>Speaking</td><td class="n">11–14′</td><td>Part 1 preguntas · Part 2 cue card 1′+2′ · Part 3 discusión</td></tr>
-        </tbody>
-      </table>
-    </div>
-    <p class="small muted" style="margin-top:8px">Nota final = media de las cuatro bandas redondeada a media banda. Confirma
-      tiempos y plazos de resultados en la web del centro donde reserves.</p>
+  <section id="v-material" data-view class="vista" hidden>
+    <div class="vista-cab"><h2>Material</h2></div>
+    <p class="nota"><span class="pill app">app</span> funciona aquí, también sin señal · <span class="pill portatil">portátil</span> vive en el portátil: al terminar, regístralo.</p>
+    <div id="matList"></div>
+    <section class="bloque">
+      <div class="bloque-cab"><h2>Formato del IELTS Academic</h2></div>
+      <div class="tablewrap card">
+        <table class="simple">
+          <thead><tr><th>Sección</th><th>Tiempo</th><th>Qué es</th></tr></thead>
+          <tbody>
+            <tr><td>Listening</td><td class="n">≈30′</td><td>4 partes, 40 preguntas: formularios, mapas, MCQ, emparejar</td></tr>
+            <tr><td>Reading</td><td class="n">60′</td><td>3 pasajes, 40 preguntas, sin tiempo extra para pasar respuestas</td></tr>
+            <tr><td>Writing</td><td class="n">60′</td><td>Task 1 (150+, ~20′) · Task 2 (250+, ~40′, vale el doble)</td></tr>
+            <tr><td>Speaking</td><td class="n">11–14′</td><td>Part 1 preguntas · Part 2 cue card 1′+2′ · Part 3 discusión</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="nota">Nota final = media de las cuatro bandas, redondeada a media banda.</p>
+    </section>
   </section>
 </main>
 
 <nav class="tabs" aria-label="Secciones">
   <div class="in">
-    <a href="#hoy" data-tab="hoy"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Hoy</a>
-    <a href="#writing" data-tab="writing"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>Writing</a>
-    <a href="#speaking" data-tab="speaking"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Speaking</a>
-    <a href="#progreso" data-tab="progreso"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progreso</a>
-    <a href="#material" data-tab="material"><svg viewBox="0 0 24 24"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>Material</a>
+    <a href="#hoy" data-tab="hoy"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Hoy</a>
+    <a href="#writing" data-tab="writing"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/></svg>Writing</a>
+    <a href="#speaking" data-tab="speaking"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>Speaking</a>
+    <a href="#progreso" data-tab="progreso"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Progreso</a>
+    <a href="#material" data-tab="material"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h6a2 2 0 0 1 2 2v13a2 2 0 0 0-2-2H4zM20 5h-6a2 2 0 0 0-2 2v13a2 2 0 0 1 2-2h6z"/></svg>Material</a>
   </div>
 </nav>
-<div class="toast" id="toast" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="visor" id="visor" hidden>
-  <div class="barra"><b id="visorTit">—</b><button type="button" id="visorCerrar">Cerrar</button></div>
+  <div class="barra"><b id="visorTit">—</b><button type="button" id="visorCerrar" class="btn-pri">Cerrar y registrar</button></div>
   <iframe id="visorFrame" title="Herramienta"></iframe>
 </div>
 
