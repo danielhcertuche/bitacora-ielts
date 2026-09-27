@@ -10,7 +10,7 @@ Funciona sin conexión una vez abierta (service worker) y no necesita servidor.
 - **Dispositivo**: todo se guarda primero en `localStorage` e IndexedDB.
 - **Google Drive** (opcional): la bitácora y los audios se sincronizan con el Drive de quien la usa,
   en la carpeta `Bitácora IELTS`. Usa el permiso `drive.file`, que sólo da acceso a los archivos que
-  la propia app crea. La fusión une entradas de varios dispositivos y respeta los borrados.
+  la propia app crea. La fusión une entradas de varios dispositivos y respeta los borrados. El avance de las tarjetas viaja con la bitácora y se fusiona carta por carta.
 - **Contenido privado**: `privado/*.enc` va cifrado con AES-GCM 256; la clave se deriva de una frase
   de paso con PBKDF2-SHA256 (310 000 iteraciones). Sin la frase, esos archivos no se pueden leer.
 

@@ -63,7 +63,7 @@ function bandaDe(score, total, skill){
    ════════════════════════════════════════════════════════════════════ */
 var KEY = "bitacora_ielts_v1";
 var CFG0 = {fecha:"", cierre:"", banda:6.5, meta:420, upd:0};
-var ST = lsGet(KEY, null) || {v:1, s:{}, t:{}, cfg:Object.assign({}, CFG0), del:{}};
+var ST = lsGet(KEY, null) || {v:1, s:{}, t:{}, cfg:Object.assign({}, CFG0), del:{}, herr:{}};
 var S = [], T = [], CFG = ST.cfg, PERFIL = null;
 
 function reconstruir(){
@@ -84,7 +84,33 @@ function fusionar(a, b){
     return r;
   }
   var cfg = (b.cfg && (b.cfg.upd || 0) > ((a.cfg && a.cfg.upd) || 0)) ? b.cfg : a.cfg;
-  return {v:1, s:une(a.s, b.s), t:une(a.t, b.t), cfg:Object.assign({}, CFG0, cfg), del:del};
+  var herr = {tarjetas_v1: fusionarTarjetas((a.herr || {}).tarjetas_v1, (b.herr || {}).tarjetas_v1)};
+  return {v:1, s:une(a.s, b.s), t:une(a.t, b.t), cfg:Object.assign({}, CFG0, cfg), del:del, herr:herr};
+}
+/* Tarjetas: carta a carta gana la que tiene más repasos; la racha, la de fecha más reciente. */
+function fusionarTarjetas(x, y){
+  if (!x) return y || null; if (!y) return x;
+  var c = {};
+  [x.c || {}, y.c || {}].forEach(function(src){ Object.keys(src).forEach(function(k){
+    var v = src[k]; if (!c[k] || (v.n || 0) > (c[k].n || 0) || ((v.n || 0) === (c[k].n || 0) && (v.due || "") > (c[k].due || ""))) c[k] = v;
+  }); });
+  var rx = x.racha || {}, ry = y.racha || {};
+  return {c:c, racha:(ry.ultimo || "") > (rx.ultimo || "") ? ry : rx, v:x.v || y.v || 1};
+}
+/* Lleva el avance local de las tarjetas a la bitácora (antes de subir) … */
+function capturarHerr(){
+  var loc = lsGet("tarjetas_v1", null); if (!loc || !loc.c) return false;
+  ST.herr = ST.herr || {};
+  var antes = JSON.stringify(ST.herr.tarjetas_v1 || null);
+  ST.herr.tarjetas_v1 = fusionarTarjetas(ST.herr.tarjetas_v1, loc);
+  return JSON.stringify(ST.herr.tarjetas_v1) !== antes;
+}
+/* … y el de otros dispositivos de vuelta a este (después de bajar). Lo que llega de fuera no cuenta
+   como sesión nueva: se mueve la línea base del registro automático. */
+function aplicarHerr(){
+  var r = ST.herr && ST.herr.tarjetas_v1; if (!r) return;
+  var loc = lsGet("tarjetas_v1", null), f = fusionarTarjetas(loc, r);
+  if (JSON.stringify(f) !== JSON.stringify(loc)){ lsSet("tarjetas_v1", f); lsSet("ui_tarj_base", totalesTarjetas()); }
 }
 
 function registrar(o){
@@ -147,8 +173,10 @@ async function sincronizar(interactivo){
   sincronizando = true; estadoSync("", "sincronizando…");
   try {
     if (interactivo) await DRIVE.conectar();
+    revisarTarjetas(); capturarHerr();
     var remoto = await DRIVE.leerEstado();
-    if (remoto && remoto.s) { ST = fusionar(ST, remoto); lsSet(KEY, ST); reconstruir(); pintarTodo(); }
+    if (remoto && remoto.s) ST = fusionar(ST, remoto);
+    aplicarHerr(); lsSet(KEY, ST); reconstruir(); pintarTodo();
     await DRIVE.escribirEstado(ST);
     var n = await subirCola();
     ultimaSync = Date.now(); lsSet("ui_ultima_sync", ultimaSync);
@@ -216,6 +244,7 @@ async function abrirPrivado(id){
   try {
     var sobre = await (await fetch("privado/" + h.archivo + ".enc")).json();
     var html = await CRIPTO.descifrar(CLAVE, sobre);
+    if (id === "tarjetas") aplicarHerr();
     $("#visorTit").textContent = h.t;
     $("#visorFrame").srcdoc = html;
     $("#visor").hidden = false;
@@ -254,7 +283,7 @@ $("#visorCerrar").addEventListener("click", function(){
   var v = VISOR, doc = null;
   try { doc = $("#visorFrame").contentDocument; } catch(err){}
   var min = v ? Math.round((Date.now() - v.t0) / 60000) : 0, e = null;
-  if (v && v.id === "tarjetas") e = revisarTarjetas(Math.max(1, min));
+  if (v && v.id === "tarjetas"){ e = revisarTarjetas(Math.max(1, min)); if (capturarHerr()) commit(); }
   else if (v){
     var sc = v.id === "build" ? resultadoEn(doc, "#res .big") : v.id === "r_test2" ? resultadoEn(doc, "#result") : null;
     if (sc || min >= 2) e = registrar({act:v.id, min:Math.max(1, min), score:sc ? sc[0] : "", total:sc ? sc[1] : "", origen:"auto"});
