@@ -4,5 +4,5 @@
  * Vacío = la app funciona igual, pero sólo guarda en el dispositivo.
  */
 window.CONFIG = {
-  GOOGLE_CLIENT_ID: ""
+  GOOGLE_CLIENT_ID: "32988120146-36h80f1kb7gll03e5lhj3em8smif1nk5.apps.googleusercontent.com"
 };
